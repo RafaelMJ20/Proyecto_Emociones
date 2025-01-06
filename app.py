@@ -1,5 +1,5 @@
 import io
-import cv2
+import os
 import numpy as np
 from flask import Flask, request, render_template, jsonify
 from tensorflow.keras.models import model_from_json
@@ -9,6 +9,13 @@ app = Flask(__name__)
 
 # Diccionario de emociones
 label_to_text = {0: 'Ira', 1: 'Odio', 2: 'Tristeza', 3: 'Felicidad', 4: 'Sorpresa'}
+
+# Crear el directorio de uploads temporalmente si no existe
+UPLOAD_FOLDER = 'static/uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Cargar el modelo y los pesos
 def load_model():
