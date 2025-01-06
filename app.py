@@ -1,10 +1,9 @@
-import os
+import io
 import cv2
 import numpy as np
 from flask import Flask, request, render_template, jsonify
 from tensorflow.keras.models import model_from_json
-from werkzeug.utils import secure_filename
-import tempfile
+from PIL import Image
 
 app = Flask(__name__)
 
@@ -21,11 +20,11 @@ def load_model():
 
 model = load_model()
 
-def preprocess_image(image_path):
-    """Preprocesa la imagen para el modelo."""
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    image = cv2.resize(image, (96, 96))
-    image = image.reshape(1, 96, 96, 1).astype('float32') / 255.0
+def preprocess_image(image_bytes):
+    """Preprocesa la imagen para el modelo desde la memoria."""
+    image = Image.open(io.BytesIO(image_bytes)).convert('L')  # Leer imagen en escala de grises
+    image = image.resize((96, 96))
+    image = np.array(image).reshape(1, 96, 96, 1).astype('float32') / 255.0
     return image
 
 @app.route('/')
@@ -37,26 +36,18 @@ def predict():
     if 'image' not in request.files:
         return jsonify({'error': 'No se subió ninguna imagen'}), 400
 
-    # Guardar la imagen temporalmente en un directorio temporal
+    # Leer la imagen directamente desde la memoria
     image_file = request.files['image']
-    filename = secure_filename(image_file.filename)
+    image_bytes = image_file.read()
 
-    # Crear un archivo temporal
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(image_file.read())  # Escribir el contenido de la imagen en el archivo temporal
-        temp_image_path = temp_file.name
-
-    # Preprocesar la imagen
-    image_data = preprocess_image(temp_image_path)
+    # Preprocesar la imagen en memoria
+    image_data = preprocess_image(image_bytes)
 
     # Hacer predicción
     predictions = model.predict(image_data)
     emotion_index = np.argmax(predictions)
     emotion = label_to_text[emotion_index]
     confidence = predictions[0][emotion_index]
-
-    # Eliminar el archivo temporal
-    os.remove(temp_image_path)
 
     return jsonify({'emotion': emotion, 'confidence': float(confidence)})
 
