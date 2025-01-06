@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Emociones</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 0.8s ease-out;
+        }
+        h1 {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            font-size: 1rem;
+            border: 2px dashed #6a11cb;
+            border-radius: 8px;
+            background: #f4f4f9;
+            transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        }
+        input[type="file"]:hover {
+            background-color: #eef2f9;
+            border-color: #2575fc;
+        }
+        button {
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s ease-in-out;
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        #preview {
+            margin-top: 20px;
+            max-width: 100%;
+            border-radius: 15px;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            transform: scale(0.8);
+            opacity: 0;
+        }
+        #preview.show {
+            transform: scale(1);
+            opacity: 1;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.3rem;
+            color: #333;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Detector de Emociones</h1>
+        <form id="emotionForm" method="POST" enctype="multipart/form-data">
+            <input type="file" id="imageInput" name="image" accept="image/*" required>
+            <br>
+            <button type="submit">Analizar Emoción</button>
+        </form>
+        <img id="preview" src="" alt="Vista previa de la imagen">
+        <div id="result">El resultado aparecerá aquí.</div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const preview = document.getElementById('preview');
+        const result = document.getElementById('result');
+        const form = document.getElementById('emotionForm');
+
+        // Mostrar la vista previa de la imagen con efecto
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.classList.add('show');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.classList.remove('show');
+            }
+        });
+
+        // Manejar el envío del formulario
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Evitar el comportamiento predeterminado
+
+            const formData = new FormData(form);
+            result.textContent = 'Analizando emoción...';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    const data = await response.json(); // Suponiendo que el servidor devuelve JSON
+                    result.textContent = `Emoción detectada: ${data.emotion}`;
+                } else {
+                    result.textContent = 'Error al analizar la emoción.';
+                }
+            } catch (error) {
+                result.textContent = 'Ocurrió un error. Inténtalo nuevamente.';
+            }
+        });
+    </script>
+</body>
+</html>
