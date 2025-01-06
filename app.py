@@ -35,8 +35,8 @@ model = load_model()
 def preprocess_image(image_bytes):
     """Preprocesa la imagen para el modelo desde la memoria."""
     image = Image.open(io.BytesIO(image_bytes)).convert('L')  # Leer imagen en escala de grises
-    image = image.resize((64, 64))
-    image = np.array(image).reshape(1, 64, 64, 1).astype('float32') / 255.0
+    image = image.resize((96, 96))
+    image = np.array(image).reshape(1, 96, 96, 1).astype('float32') / 255.0
     return image
 
 @app.route('/')
