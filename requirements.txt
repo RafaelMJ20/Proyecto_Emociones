@@ -6,3 +6,4 @@ keras==2.8.0
 gunicorn
 protobuf==3.20.0
 Pillow
+boto3
