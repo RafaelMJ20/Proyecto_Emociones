@@ -4,4 +4,3 @@ opencv-python
 tensorflow==2.8.0
 keras==2.8.0
 gunicorn
-protobuf==3.20.*
