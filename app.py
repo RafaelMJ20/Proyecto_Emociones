@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from tensorflow.keras.models import model_from_json
 from werkzeug.utils import secure_filename
+import imghdr
 import io
 
 app = Flask(__name__)
@@ -26,6 +27,8 @@ def preprocess_image_from_memory(file):
     """Preprocesa la imagen para el modelo desde la memoria."""
     file_bytes = np.frombuffer(file.read(), np.uint8)
     image = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        raise ValueError("No se pudo procesar la imagen")
     image = cv2.resize(image, (96, 96))
     image = image.reshape(1, 96, 96, 1).astype('float32') / 255.0
     return image
@@ -42,6 +45,11 @@ def predict():
     # Leer la imagen desde la memoria
     image_file = request.files['image']
     image_file.filename = secure_filename(image_file.filename)  # Asegurarse de que el nombre del archivo sea seguro
+
+    # Verificar si el archivo es una imagen válida
+    file_type = imghdr.what(image_file)
+    if file_type not in ['jpeg', 'png', 'jpg']:
+        return jsonify({'error': 'Formato de imagen no soportado'}), 400
 
     try:
         # Preprocesar la imagen directamente desde la memoria
