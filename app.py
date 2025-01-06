@@ -1,10 +1,10 @@
-from flask import Flask, request, render_template, jsonify
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+from flask import Flask, request, render_template, jsonify
 import cv2
 import numpy as np
 from tensorflow.keras.models import model_from_json
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
