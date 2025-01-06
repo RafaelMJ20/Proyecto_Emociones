@@ -7,11 +7,16 @@ from tensorflow.keras.models import model_from_json
 
 
 app = Flask(__name__)
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
 # Diccionario de emociones (asegúrate de que coincida con tu modelo)
 label_to_text = {0: 'Ira', 1: 'Odio', 2: 'Tristeza', 3: 'Felicidad', 4: 'Sorpresa'}
 
+# Asegúrate de que el directorio de subida existe
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+    
 # Cargar el modelo y los pesos
 def load_model():
     with open('FacialExpression-model.json', 'r') as json_file:
