@@ -11,6 +11,7 @@ from tensorflow.keras.models import model_from_json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+import mediapipe as mp
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +31,10 @@ def load_model():
     return model
 
 model = load_model()
+
+# Inicializar MediaPipe FaceMesh
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5)
 
 # Función para preprocesar la imagen
 def preprocess_image(image_bytes):
@@ -61,7 +66,7 @@ def predict():
     emotion = label_to_text[emotion_index]
     confidence = predictions[0][emotion_index]
 
-    # Subir la imagen procesada a Google Drive
+    # Detectar puntos faciales y dibujarlos
     img_data = process_and_save_image(image_bytes, image_file.filename)
 
     return jsonify({
@@ -79,10 +84,26 @@ def obtener_servicio_drive():
     return service
 
 def process_and_save_image(image_bytes, filename):
-    """Convierte la imagen y la sube a Google Drive."""
+    """Convierte la imagen, detecta puntos faciales y la sube a Google Drive."""
     # Convertir la imagen a formato PIL para posibles manipulaciones
     image = Image.open(io.BytesIO(image_bytes))
-    # Aquí puedes hacer más transformaciones a la imagen si lo deseas
+    img_np = np.array(image)
+
+    # Procesar la imagen para detectar puntos faciales
+    img_rgb = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(img_rgb)
+
+    # Si se detectan puntos faciales, dibujarlos
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            draw = ImageDraw.Draw(image)
+            for idx, landmark in enumerate(face_landmarks.landmark):
+                if idx in [70, 55, 285, 300, 33, 468, 133, 362, 473, 263, 4, 185, 0, 306, 17]:  # puntos clave
+                    h, w, _ = img_rgb.shape
+                    x = int(landmark.x * w)
+                    y = int(landmark.y * h)
+                    draw.line((x - 5, y - 5, x + 5, y + 5), fill='red', width=2)
+                    draw.line((x - 5, y + 5, x + 5, y - 5), fill='red', width=2)
 
     # Guardar la imagen procesada como base64
     buffered = io.BytesIO()
