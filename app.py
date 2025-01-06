@@ -1,34 +1,37 @@
-import io
-import os
+from flask import Flask, request, jsonify, render_template
+import cv2
 import numpy as np
-from flask import Flask, request, render_template, jsonify
+from flask_cors import CORS
+from PIL import Image, ImageDraw
+import io
+import base64
+import json
+import os
 from tensorflow.keras.models import model_from_json
-from PIL import Image
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 
 app = Flask(__name__)
+CORS(app)
+
+# ID de la carpeta donde deseas subir la imagen
+FOLDER_ID = '1Z5oK0YBGg8HFsbpmsUWFwKqtczKXZxPX'
 
 # Diccionario de emociones
 label_to_text = {0: 'Ira', 1: 'Odio', 2: 'Tristeza', 3: 'Felicidad', 4: 'Sorpresa'}
 
-# Crear el directorio de uploads temporalmente si no existe
-UPLOAD_FOLDER = 'static/uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 # Cargar el modelo y los pesos
 def load_model():
-    print("Cargando el modelo ...")
     with open('FacialExpression-model.json', 'r') as json_file:
         loaded_model_json = json_file.read()
     model = model_from_json(loaded_model_json)
     model.load_weights('FacialExpression_weights.hdf5')
-    print("Modelo cargado exitosamente.")
     return model
 
 model = load_model()
 
+# Función para preprocesar la imagen
 def preprocess_image(image_bytes):
     """Preprocesa la imagen para el modelo desde la memoria."""
     image = Image.open(io.BytesIO(image_bytes)).convert('L')  # Leer imagen en escala de grises
@@ -58,7 +61,48 @@ def predict():
     emotion = label_to_text[emotion_index]
     confidence = predictions[0][emotion_index]
 
-    return jsonify({'emotion': emotion, 'confidence': float(confidence)})
+    # Subir la imagen procesada a Google Drive
+    img_data = process_and_save_image(image_bytes, image_file.filename)
+
+    return jsonify({
+        'emotion': emotion,
+        'confidence': float(confidence),
+        'image_base64': img_data['image_base64'],
+        'drive_id': img_data['drive_id']
+    })
+
+def obtener_servicio_drive():
+    SCOPES = ['https://www.googleapis.com/auth/drive.file']
+    creds_info = json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON'))
+    creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+    service = build('drive', 'v3', credentials=creds)
+    return service
+
+def process_and_save_image(image_bytes, filename):
+    """Convierte la imagen y la sube a Google Drive."""
+    # Convertir la imagen a formato PIL para posibles manipulaciones
+    image = Image.open(io.BytesIO(image_bytes))
+    # Aquí puedes hacer más transformaciones a la imagen si lo deseas
+
+    # Guardar la imagen procesada como base64
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")
+    img_data = buffered.getvalue()
+
+    # Subir a Google Drive
+    service = obtener_servicio_drive()
+    archivo_drive = MediaIoBaseUpload(io.BytesIO(img_data), mimetype='image/png')
+    archivo_metadata = {
+        'name': f'{filename}',
+        'mimeType': 'image/png',
+        'parents': [FOLDER_ID]
+    }
+    archivo_subido = service.files().create(body=archivo_metadata, media_body=archivo_drive).execute()
+
+    return {
+        'image_base64': base64.b64encode(img_data).decode('utf-8'),
+        'drive_id': archivo_subido.get('id')
+    }
 
 if __name__ == '__main__':
     app.run(debug=True)
