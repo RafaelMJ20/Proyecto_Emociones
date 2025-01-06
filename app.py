@@ -19,10 +19,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Cargar el modelo y los pesos
 def load_model():
+    print("Cargando el modelo ...")
     with open('FacialExpression-model.json', 'r') as json_file:
         loaded_model_json = json_file.read()
     model = model_from_json(loaded_model_json)
     model.load_weights('FacialExpression_weights.hdf5')
+    print("Modelo cargado exitosamente.")
     return model
 
 model = load_model()
